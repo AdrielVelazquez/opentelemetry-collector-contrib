@@ -245,7 +245,12 @@ func newSaramaProducer(config Config) (sarama.SyncProducer, error) {
 		return nil, err
 	}
 	c.Producer.Compression = compression
-
+	if config.CaptureSaramaLogs == true {
+		logError := enableLoggingSarama(*c, "producer")
+		if logError != nil {
+			return nil, logError
+		}
+	}
 	producer, err := sarama.NewSyncProducer(config.Brokers, c)
 	if err != nil {
 		return nil, err

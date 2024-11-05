@@ -5,6 +5,8 @@ package kafkaexporter // import "github.com/open-telemetry/opentelemetry-collect
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -36,6 +38,9 @@ type Config struct {
 	// ClientID to configure the Kafka client with. This can be leveraged by
 	// Kafka to enforce ACLs, throttling quotas, and more.
 	ClientID string `mapstructure:"client_id"`
+
+	// CaptureSaramaLogs to configure Sarama to output the logs to debug Sarama.
+	CaptureSaramaLogs bool `mapstructure:"capture_sarama_logs"`
 
 	// The name of the kafka topic to export to (default otlp_spans for traces, otlp_metrics for metrics)
 	Topic string `mapstructure:"topic"`
@@ -172,4 +177,19 @@ func saramaProducerCompressionCodec(compression string) (sarama.CompressionCodec
 	default:
 		return sarama.CompressionNone, fmt.Errorf("producer.compression should be one of 'none', 'gzip', 'snappy', 'lz4', or 'zstd'. configured value %v", compression)
 	}
+}
+
+func enableLoggingSarama(c sarama.Config, clientType string) error {
+	sarama.Logger = log.New(os.Stdout, "[sarama] ", log.LstdFlags)
+	if clientType == "consumer" {
+		c.Consumer.Return.Errors = true
+		return nil
+	}
+	if clientType == "producer" {
+		c.Producer.Return.Errors = true
+		c.Producer.Return.Successes = true
+		return nil
+	}
+
+	return fmt.Errorf("ClientType not consumer or producer got %v", clientType)
 }
